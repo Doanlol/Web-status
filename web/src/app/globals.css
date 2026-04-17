@@ -1,0 +1,92 @@
+/*
+ * =============================================================
+ * Global CSS - DevOps Dashboard Theme
+ * =============================================================
+ * Import Tailwind CSS directives và custom styles
+ * =============================================================
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import font Fira Code từ Google Fonts (font monospace cho developer) */
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap');
+
+/* ============================================================
+   Custom Scrollbar - Phong cách terminal
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0D1117; /* Màu nền scrollbar */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #30363D; /* Màu thanh scroll */
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #00ff9c; /* Màu xanh khi hover */
+}
+
+/* ============================================================
+   Progress Bar Animation - Hiệu ứng chuyển màu mượt
+   ============================================================ */
+.progress-bar {
+  transition: width 0.5s ease-in-out;
+}
+
+/* ============================================================
+   Terminal Style - Cho phần log
+   ============================================================ */
+.terminal {
+  background: #0D1117;
+  border: 1px solid #30363D;
+  border-radius: 8px;
+  font-family: 'Fira Code', monospace;
+}
+
+.terminal-line {
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(48, 54, 61, 0.3);
+}
+
+/* ============================================================
+   Card Hover Effect
+   ============================================================ */
+.server-card {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.server-card:hover {
+  border-color: rgba(0, 255, 156, 0.3);
+  box-shadow: 0 0 20px rgba(0, 255, 156, 0.05);
+}
+
+/* ============================================================
+   Blinking Cursor - Hiệu ứng con trỏ terminal
+   ============================================================ */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* ============================================================
+   Status Badge Glow Effect
+   ============================================================ */
+.badge-online {
+  box-shadow: 0 0 8px rgba(0, 255, 156, 0.4);
+}
+
+.badge-offline {
+  box-shadow: 0 0 8px rgba(255, 68, 68, 0.4);
+}

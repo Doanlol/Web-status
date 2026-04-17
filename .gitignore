@@ -1,0 +1,68 @@
+# =============================================================
+# .gitignore - DevOps Status Dashboard
+# =============================================================
+
+# ========== Next.js ==========
+web/.next/
+web/out/
+web/build/
+web/node_modules/
+
+# Environment files (chứa API keys - KHÔNG commit)
+web/.env
+web/.env.local
+web/.env.development.local
+web/.env.test.local
+web/.env.production.local
+
+# ========== Python Agent ==========
+agent/__pycache__/
+agent/*.pyc
+agent/*.pyo
+agent/.env          # Chứa Service Role Key - KHÔNG commit
+agent/venv/
+agent/env/
+agent/.venv/
+agent/agent.log
+
+# ========== Python general ==========
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.whl
+pip-log.txt
+pip-delete-this-directory.txt
+venv/
+.venv/
+ENV/
+env/
+
+# ========== OS files ==========
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ========== Editor files ==========
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ========== Logs ==========
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
