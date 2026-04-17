@@ -1,0 +1,14 @@
+# =============================================================
+# DevOps Status Dashboard - Python Agent Dependencies
+# =============================================================
+# Cài đặt: pip install -r requirements.txt
+# =============================================================
+
+# Thu thập thông tin CPU, RAM, Disk của hệ thống
+psutil==5.9.8
+
+# Gửi HTTP request đến Supabase REST API
+requests==2.31.0
+
+# Đọc biến môi trường từ file .env
+python-dotenv==1.0.1
