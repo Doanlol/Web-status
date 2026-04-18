@@ -77,6 +77,7 @@ echo ""
 # ============================================================
 echo -e "\${CYAN}📝 Đang lưu cấu hình vào file .env...\${NC}"
 printf 'API_URL=${apiUrl}\\nTOKEN=%s\\n' "\$TOKEN" > .env
+chmod 600 .env
 echo -e "\${GREEN}✅ Đã tạo file .env thành công!\${NC}"
 echo ""
 

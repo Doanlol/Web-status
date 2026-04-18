@@ -53,6 +53,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (
+    typeof cpu !== "number" || cpu < 0 || cpu > 100 ||
+    typeof memory !== "number" || memory < 0 || memory > 100 ||
+    typeof disk !== "number" || disk < 0 || disk > 100
+  ) {
+    return NextResponse.json(
+      { error: "Giá trị cpu, memory, disk phải là số trong khoảng 0–100." },
+      { status: 400 }
+    );
+  }
+
   try {
     const supabase = createServerSupabaseClient();
 

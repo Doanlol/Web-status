@@ -72,7 +72,11 @@ def register_server() -> str:
             timeout=10,
         )
         response.raise_for_status()
-        return response.json()["id"]
+        data = response.json()
+        server_id = data.get("id")
+        if not server_id:
+            raise Exception("API không trả về server ID hợp lệ.")
+        return server_id
     except requests.exceptions.RequestException as e:
         raise Exception(f"Không thể đăng ký server: {e}") from e
 
