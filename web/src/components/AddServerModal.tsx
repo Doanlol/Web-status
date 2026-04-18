@@ -11,6 +11,7 @@
  */
 import { useState, useCallback, useEffect } from "react";
 import { X, Copy, Check, Server, Terminal, RefreshCw, Plus } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 // Thời gian (ms) hiển thị thông báo thành công trước khi đóng modal
 const SUCCESS_DISPLAY_DURATION_MS = 1200;
@@ -92,25 +93,29 @@ export default function AddServerModal({ onClose, onSuccess }: AddServerModalPro
   // Lệnh cài đặt agent Zero-Config — script tự tạo Token trên VM
   const installCommand = `curl -sL ${dashboardUrl}/api/setup | bash`;
 
-  // ── Gọi API để đăng ký server với token do VM tạo ────────────
+  // ── Gọi Supabase RPC để nhận quyền sở hữu server ────────────
   const handleRegister = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch("/api/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ hostname: serverName.trim() || "My Server" }),
+      const { data: claimed, error: claimError } = await supabase.rpc("claim_server", {
+        p_token: token.trim(),
       });
 
-      const data = await res.json();
+      if (claimError || !claimed) {
+        throw new Error(
+          "Token không hợp lệ, server chưa chạy lệnh cài đặt, hoặc đã được thêm bởi người khác."
+        );
+      }
 
-      if (!res.ok) {
-        throw new Error(data.error || `Lỗi HTTP ${res.status}`);
+      const { error: updateError } = await supabase
+        .from("servers")
+        .update({ name: serverName.trim() || "My Server" })
+        .eq("token", token.trim());
+
+      if (updateError) {
+        throw new Error(`Không thể cập nhật tên server: ${updateError.message}`);
       }
 
       setSuccess(true);
