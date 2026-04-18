@@ -2,7 +2,7 @@
 
 > **Theo dõi server của bạn theo thời gian thực** — CPU, RAM, Disk và Log, tất cả hiển thị ngay lập tức trên trình duyệt mà không cần tải lại trang.
 
-![Next.js](https://img.shields.io/badge/Frontend-Next.js%2014-black?logo=next.js)
+![Next.js](https://img.shields.io/badge/Frontend-Next.js%2015-black?logo=next.js)
 ![Supabase](https://img.shields.io/badge/Backend-Supabase-3ECF8E?logo=supabase)
 ![Python](https://img.shields.io/badge/Agent-Python%203-3776AB?logo=python)
 ![License](https://img.shields.io/badge/License-MIT-blue)
@@ -42,7 +42,7 @@
 
 | Thành phần | Công nghệ | Vai trò |
 |---|---|---|
-| **Frontend** | Next.js 14 (React + TypeScript) | Giao diện hiển thị dashboard |
+| **Frontend** | Next.js 15 (React + TypeScript) | Giao diện hiển thị dashboard |
 | **Backend** | Supabase (PostgreSQL + Realtime) | Lưu trữ dữ liệu, xác thực, WebSocket |
 | **Agent** | Python 3 + psutil | Chạy trên VM, thu thập và gửi metrics |
 
