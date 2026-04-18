@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
+import { Fira_Code } from "next/font/google";
 import "./globals.css";
+
+const firaCode = Fira_Code({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "DevOps Status Dashboard",
@@ -13,14 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi">
-      <head>
-        {/* Import font Fira Code từ Google Fonts để có kiểu chữ dev */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="bg-devops-bg text-devops-text font-mono antialiased">
+      <body className={`${firaCode.className} bg-devops-bg text-devops-text antialiased`}>
         {children}
       </body>
     </html>

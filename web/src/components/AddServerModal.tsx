@@ -192,7 +192,7 @@ export default function AddServerModal({ onClose, onSuccess }: AddServerModalPro
               <span className="bg-devops-green text-devops-bg w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold">
                 3
               </span>
-              Dán Token vào ô bên dưới, điền tên Server và nhấn "Thêm vào Dashboard"
+              Dán Token vào ô bên dưới, điền tên Server và nhấn &quot;Thêm vào Dashboard&quot;
             </h3>
 
             <div className="flex flex-col gap-3">
