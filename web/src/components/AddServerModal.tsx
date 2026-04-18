@@ -1,15 +1,13 @@
 "use client";
 
 /**
- * Modal "Thêm Server" — Claim Server bằng Token
+ * Modal "Thêm Server" — Zero-Config flow
  *
  * Luồng hoạt động:
- * 1. Modal tự tạo một UUID token ngẫu nhiên khi mở.
- * 2. User copy token và lệnh cài đặt, sau đó chạy trên VM.
- * 3. User điền tên server và nhấn "Thêm vào Dashboard" để
- *    đăng ký trước server (gọi POST /api/register).
- * 4. Khi agent trên VM khởi động với cùng token, nó sẽ
- *    tự cập nhật hostname và IP vào bản ghi đã có.
+ * 1. User chạy lệnh curl /api/setup trên VM.
+ * 2. Script tự động cài đặt và in ra mã Token.
+ * 3. User copy Token từ terminal, dán vào ô bên dưới,
+ *    điền tên Server và nhấn "Thêm vào Dashboard".
  */
 import { useState, useCallback, useEffect } from "react";
 import { X, Copy, Check, Server, Terminal, RefreshCw, Plus } from "lucide-react";
@@ -71,21 +69,12 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
 // COMPONENT CHÍNH: AddServerModal
 // ============================================================
 export default function AddServerModal({ onClose, onSuccess }: AddServerModalProps) {
-  // Token ngẫu nhiên được tạo khi modal mở (dùng crypto.randomUUID nếu có)
+  // Token do VM tự sinh ra — user dán vào sau khi chạy lệnh cài đặt
   const [token, setToken] = useState<string>("");
   const [serverName, setServerName] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-
-  // Tạo token khi component mount (chỉ chạy ở client)
-  useEffect(() => {
-    const newToken =
-      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : generateFallbackUUID();
-    setToken(newToken);
-  }, []);
 
   // Đóng modal khi nhấn Escape
   useEffect(() => {
@@ -100,35 +89,10 @@ export default function AddServerModal({ onClose, onSuccess }: AddServerModalPro
   const dashboardUrl =
     typeof window !== "undefined" ? window.location.origin : "https://your-dashboard.vercel.app";
 
-  // Lệnh cài đặt agent trên VM (dùng token đã tạo)
-  const installCommand =
-    `export DASHBOARD_TOKEN="${token}"\n` +
-    `curl -sL https://raw.githubusercontent.com/Doanlol/Web-status/main/agent/setup.sh -o setup.sh\n` +
-    `bash setup.sh`;
+  // Lệnh cài đặt agent Zero-Config — script tự tạo Token trên VM
+  const installCommand = `curl -sL ${dashboardUrl}/api/setup | bash`;
 
-  // ── Tạo UUID fallback (RFC 4122 v4, dùng crypto.getRandomValues) ──
-  function generateFallbackUUID(): string {
-    const bytes = new Uint8Array(16);
-    crypto.getRandomValues(bytes);
-    // Đặt version (4) và variant bits theo RFC 4122
-    bytes[6] = (bytes[6] & 0x0f) | 0x40;
-    bytes[8] = (bytes[8] & 0x3f) | 0x80;
-    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-  }
-
-  // ── Tạo lại token mới ─────────────────────────────────────────
-  const regenerateToken = useCallback(() => {
-    const newToken =
-      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : generateFallbackUUID();
-    setToken(newToken);
-    setError(null);
-    setSuccess(false);
-  }, []);
-
-  // ── Gọi API để đăng ký trước server ──────────────────────────
+  // ── Gọi API để đăng ký server với token do VM tạo ────────────
   const handleRegister = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -185,49 +149,14 @@ export default function AddServerModal({ onClose, onSuccess }: AddServerModalPro
         </div>
 
         <div className="px-6 py-5 flex flex-col gap-6">
-          {/* ── Bước 1: Token ─────────────────────────────── */}
+          {/* ── Bước 1: Lệnh cài đặt trên VM ─────────────── */}
           <section>
             <h3 className="text-devops-green text-sm font-semibold mb-3 flex items-center gap-2">
               <span className="bg-devops-green text-devops-bg w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold">
                 1
               </span>
-              Token nhận diện server của bạn
+              Chạy lệnh dưới đây trên VM của bạn
             </h3>
-            <p className="text-devops-muted text-xs mb-3">
-              Mỗi server cần một token duy nhất. Token này sẽ được dùng để agent
-              trên VM liên kết với dashboard.
-            </p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 bg-devops-bg border border-devops-border rounded-lg px-3 py-2 text-devops-green text-xs font-mono break-all select-all">
-                {token || "Đang tạo token..."}
-              </code>
-              <div className="flex flex-col gap-1.5 shrink-0">
-                <CopyButton text={token} label="Copy" />
-                <button
-                  onClick={regenerateToken}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all
-                    bg-devops-border/50 hover:bg-devops-border text-devops-muted hover:text-devops-text"
-                  title="Tạo token mới"
-                >
-                  <RefreshCw size={12} />
-                  <span>Mới</span>
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* ── Bước 2: Lệnh cài đặt trên VM ─────────────── */}
-          <section>
-            <h3 className="text-devops-green text-sm font-semibold mb-3 flex items-center gap-2">
-              <span className="bg-devops-green text-devops-bg w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold">
-                2
-              </span>
-              Chạy lệnh này trên VM / Server của bạn
-            </h3>
-            <p className="text-devops-muted text-xs mb-3">
-              SSH vào server, sau đó copy và chạy lệnh bên dưới. Script sẽ tự
-              động cài đặt agent và kết nối với dashboard bằng token ở trên.
-            </p>
             <div className="relative">
               <div className="flex items-center justify-between bg-devops-bg border border-devops-border rounded-t-lg px-3 py-1.5">
                 <span className="flex items-center gap-1.5 text-devops-muted text-xs">
@@ -240,30 +169,47 @@ export default function AddServerModal({ onClose, onSuccess }: AddServerModalPro
                 {installCommand}
               </pre>
             </div>
-            <p className="text-devops-muted text-xs mt-2">
-              💡 Script sẽ hỏi{" "}
-              <code className="text-devops-text">SUPABASE_URL</code> và{" "}
-              <code className="text-devops-text">SUPABASE_SERVICE_ROLE_KEY</code>{" "}
-              — lấy từ bảng điều khiển Supabase của bạn.
+          </section>
+
+          {/* ── Bước 2: Script in ra Token ────────────────── */}
+          <section>
+            <h3 className="text-devops-green text-sm font-semibold mb-3 flex items-center gap-2">
+              <span className="bg-devops-green text-devops-bg w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold">
+                2
+              </span>
+              Script sẽ tự động cài đặt và in ra mã Token. Hãy copy Token đó.
+            </h3>
+            <p className="text-devops-muted text-xs">
+              Sau khi lệnh chạy xong, terminal sẽ hiển thị nổi bật dòng{" "}
+              <code className="text-devops-green">MÃ SERVER TOKEN CỦA BẠN LÀ: ...</code>.
+              Hãy sao chép mã đó để dùng ở bước tiếp theo.
             </p>
           </section>
 
-          {/* ── Bước 3: Đặt tên và đăng ký trước ─────────── */}
+          {/* ── Bước 3: Dán Token và đăng ký ─────────────── */}
           <section>
             <h3 className="text-devops-green text-sm font-semibold mb-3 flex items-center gap-2">
               <span className="bg-devops-green text-devops-bg w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold">
                 3
               </span>
-              Đặt tên và thêm vào Dashboard
+              Dán Token vào ô bên dưới, điền tên Server và nhấn "Thêm vào Dashboard"
             </h3>
-            <p className="text-devops-muted text-xs mb-3">
-              Tuỳ chọn: đặt tên thân thiện cho server. Sau đó nhấn{" "}
-              <strong className="text-devops-text">Thêm vào Dashboard</strong> để
-              đăng ký trước — server sẽ xuất hiện ngay lập tức và tự cập nhật
-              khi agent kết nối.
-            </p>
 
             <div className="flex flex-col gap-3">
+              {/* Ô dán Token từ terminal */}
+              <div className="flex items-center gap-2">
+                <Terminal size={14} className="text-devops-muted shrink-0" />
+                <input
+                  type="text"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  placeholder="Dán Token từ terminal vào đây..."
+                  className="flex-1 bg-devops-bg border border-devops-border rounded-lg px-3 py-2 text-devops-green text-sm font-mono
+                    placeholder:text-devops-muted focus:outline-none focus:border-devops-green transition-colors"
+                />
+              </div>
+
+              {/* Ô đặt tên server */}
               <div className="flex items-center gap-2">
                 <Server size={14} className="text-devops-muted shrink-0" />
                 <input
@@ -271,9 +217,9 @@ export default function AddServerModal({ onClose, onSuccess }: AddServerModalPro
                   value={serverName}
                   onChange={(e) => setServerName(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && !loading && !success) handleRegister();
+                    if (e.key === "Enter" && !loading && !success && token.trim()) handleRegister();
                   }}
-                  placeholder="VD: Production VM, GCP Asia..."
+                  placeholder="Tên Server (VD: Production VM, GCP Asia...)"
                   className="flex-1 bg-devops-bg border border-devops-border rounded-lg px-3 py-2 text-devops-text text-sm
                     placeholder:text-devops-muted focus:outline-none focus:border-devops-green transition-colors"
                 />
@@ -301,7 +247,7 @@ export default function AddServerModal({ onClose, onSuccess }: AddServerModalPro
               <div className="flex gap-2">
                 <button
                   onClick={handleRegister}
-                  disabled={loading || success || !token}
+                  disabled={loading || success || !token.trim()}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm
                     bg-devops-green text-devops-bg hover:opacity-90 transition-opacity
                     disabled:opacity-50 disabled:cursor-not-allowed"
