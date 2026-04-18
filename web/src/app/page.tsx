@@ -10,7 +10,8 @@
  */
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
-import { Server, Activity, HardDrive, Cpu, RefreshCw, Terminal } from "lucide-react";
+import { Server, Activity, HardDrive, Cpu, RefreshCw, Terminal, Plus } from "lucide-react";
+import AddServerModal from "@/components/AddServerModal";
 import {
   LineChart,
   Line,
@@ -211,6 +212,7 @@ export default function Dashboard() {
   const [logsMap, setLogsMap] = useState<Record<string, Log[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   // Hàm fetch dữ liệu ban đầu từ Supabase
   const fetchData = useCallback(async () => {
@@ -309,6 +311,16 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-devops-bg p-6 md:p-10">
+      {/* Modal thêm server */}
+      {showAddModal && (
+        <AddServerModal
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => {
+            setShowAddModal(false);
+            fetchData();
+          }}
+        />
+      )}
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -320,13 +332,22 @@ export default function Dashboard() {
             Realtime monitoring · Powered by Supabase
           </p>
         </div>
-        <button
-          onClick={fetchData}
-          className="flex items-center gap-2 px-4 py-2 bg-devops-panel border border-devops-border rounded-lg text-devops-muted hover:text-devops-green hover:border-devops-green transition-colors text-sm"
-        >
-          <RefreshCw size={14} />
-          Tải lại
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-devops-green text-devops-bg rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity"
+          >
+            <Plus size={16} />
+            Thêm Server
+          </button>
+          <button
+            onClick={fetchData}
+            className="flex items-center gap-2 px-4 py-2 bg-devops-panel border border-devops-border rounded-lg text-devops-muted hover:text-devops-green hover:border-devops-green transition-colors text-sm"
+          >
+            <RefreshCw size={14} />
+            Tải lại
+          </button>
+        </div>
       </div>
 
       {/* Trạng thái loading / lỗi */}
