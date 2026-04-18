@@ -13,9 +13,10 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ============================================================
 CREATE TABLE IF NOT EXISTS servers (
   id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id     UUID        REFERENCES auth.users NOT NULL,  -- Liên kết với user đăng nhập
+  user_id     UUID        REFERENCES auth.users,           -- Liên kết với user đăng nhập (NULL nếu chưa được claim)
   name        TEXT        NOT NULL,                        -- Tên server (VD: "Production VM")
   ip_address  TEXT,                                        -- Địa chỉ IP của server
+  token       UUID        UNIQUE NOT NULL DEFAULT uuid_generate_v4(), -- Token bí mật để claim server
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -53,11 +54,47 @@ ALTER TABLE logs    ENABLE ROW LEVEL SECURITY;
 -- ============================================================
 -- POLICY CHO BẢNG servers
 -- ============================================================
--- User chỉ được xem, thêm, sửa, xóa server của chính mình
-CREATE POLICY "Users can manage their own servers"
-ON servers FOR ALL
+-- User chỉ được xem, sửa, xóa server của chính mình
+CREATE POLICY "Users can view their own servers"
+ON servers FOR SELECT
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own servers"
+ON servers FOR UPDATE
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own servers"
+ON servers FOR DELETE
+USING (auth.uid() = user_id);
+
+-- ============================================================
+-- HÀM CLAIM SERVER - Cho phép user nhận quyền sở hữu server
+-- bằng cách cung cấp đúng TOKEN bí mật của server.
+-- ============================================================
+-- Hàm này chạy với quyền SECURITY DEFINER (bypass RLS) để có thể
+-- cập nhật user_id bất kể chính sách RLS hiện tại.
+CREATE OR REPLACE FUNCTION claim_server(p_token UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Từ chối nếu người gọi chưa đăng nhập
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Bạn phải đăng nhập để claim server.';
+  END IF;
+
+  -- Chỉ cho phép claim server chưa có chủ (user_id IS NULL)
+  UPDATE servers
+  SET user_id = auth.uid()
+  WHERE token = p_token
+    AND user_id IS NULL;
+
+  RETURN FOUND;
+END;
+$$;
 
 -- ============================================================
 -- POLICY CHO BẢNG metrics
