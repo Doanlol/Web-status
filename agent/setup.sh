@@ -24,7 +24,7 @@ echo -e "${GREEN}║   🚀 DevOps Status Dashboard - Agent     ║${NC}"
 echo -e "${GREEN}║      Script cài đặt tự động              ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "${CYAN}Bạn cần chuẩn bị 3 thông tin từ Supabase trước khi tiếp tục.${NC}"
+echo -e "${CYAN}Bạn cần chuẩn bị 2 thông tin từ Supabase trước khi tiếp tục.${NC}"
 echo -e "${CYAN}Xem hướng dẫn lấy các thông tin này trong file README.md.${NC}"
 echo ""
 
@@ -42,24 +42,31 @@ read -p "🔗 Nhập SUPABASE_URL (vd: https://xxx.supabase.co): " SUPABASE_URL
 # (Key bí mật có quyền tối cao - cần bảo vệ kỹ!)
 read -p "🔑 Nhập SUPABASE_SERVICE_ROLE_KEY: " SUPABASE_SERVICE_ROLE_KEY
 
-# Yêu cầu người dùng nhập SERVER_ID
-# (UUID của server đã tạo trong bảng 'servers' trên Supabase)
-read -p "🖥️  Nhập SERVER_ID (UUID từ bảng servers): " SERVER_ID
-
 echo ""
 
 # Kiểm tra xem người dùng đã nhập đủ thông tin chưa
-if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$SERVER_ID" ]; then
+if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
     echo -e "${RED}❌ LỖI: Bạn chưa nhập đủ thông tin. Vui lòng chạy lại script.${NC}"
     exit 1
 fi
+
+# ============================================================
+# BƯỚC 1.5: Tự động tạo SERVER_TOKEN (UUID ngẫu nhiên)
+# ============================================================
+echo -e "${CYAN}🔐 Đang tạo SERVER_TOKEN ngẫu nhiên...${NC}"
+
+# Tạo UUID ngẫu nhiên bằng Python (đảm bảo hoạt động trên mọi hệ điều hành)
+SERVER_TOKEN=$(python3 -c "import uuid; print(uuid.uuid4())")
+
+echo -e "${GREEN}✅ SERVER_TOKEN đã được tạo: ${CYAN}${SERVER_TOKEN}${NC}"
+echo ""
 
 # ============================================================
 # BƯỚC 2: Tạo file .env để lưu thông tin cấu hình
 # ============================================================
 echo -e "${CYAN}📝 Đang tạo file .env...${NC}"
 
-# Ghi 3 biến vào file .env trong cùng thư mục agent/
+# Ghi các biến vào file .env trong cùng thư mục agent/
 # File này sẽ được agent.py đọc khi khởi động
 cat > .env << EOF
 # File cấu hình Agent - Đừng chia sẻ file này với ai!
@@ -67,7 +74,7 @@ cat > .env << EOF
 
 SUPABASE_URL=${SUPABASE_URL}
 SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-SERVER_ID=${SERVER_ID}
+SERVER_TOKEN=${SERVER_TOKEN}
 EOF
 
 echo -e "${GREEN}✅ Đã tạo file .env thành công!${NC}"
