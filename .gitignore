@@ -1,0 +1,17 @@
+# ===== Python Agent =====
+agent/.env
+agent/agent_log.txt
+agent/__pycache__/
+agent/*.pyc
+
+# ===== Next.js Frontend =====
+web/.env.local
+web/.env
+web/node_modules/
+web/.next/
+web/out/
+web/.vercel
+
+# ===== General =====
+.DS_Store
+*.log
