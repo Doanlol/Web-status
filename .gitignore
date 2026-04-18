@@ -15,3 +15,10 @@ web/.vercel
 # ===== General =====
 .DS_Store
 *.log
+
+# ===== Build artifacts (root level) =====
+.env
+agent_log.txt
+web/tsconfig.tsbuildinfo
+web/next-env.d.ts
+web/package-lock.json
