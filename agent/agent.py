@@ -1,12 +1,16 @@
 """
-DevOps Status Dashboard - Python Agent
-=======================================
+DevOps Status Dashboard - Python Agent (Zero-Config)
+=====================================================
 Script này chạy liên tục trên VM/Server, thu thập các thông số
-hệ thống (CPU, RAM, Disk) và gửi realtime lên Supabase.
+hệ thống (CPU, RAM, Disk) và gửi lên Dashboard API.
 
 Cách chạy:
-  1. Chạy ./setup.sh để cấu hình tự động
+  1. Chạy Zero-Config setup script từ Dashboard:
+       curl -fsSL https://<dashboard-url>/api/setup | bash
   2. Hoặc tạo file .env thủ công rồi chạy: python3 agent.py
+       File .env cần có:
+         API_URL=https://your-dashboard.com
+         TOKEN=uuid-token-của-server
 """
 
 import time
@@ -19,44 +23,38 @@ from datetime import datetime
 # ============================================================
 # LOAD BIẾN MÔI TRƯỜNG TỪ FILE .env (python-dotenv)
 # ============================================================
-# Thư viện python-dotenv giúp đọc các biến từ file .env
-# mà không cần phải gắn cứng (hardcode) thông tin nhạy cảm vào code.
 from dotenv import load_dotenv
 
-# Tải các biến từ file .env trong cùng thư mục với script này
 load_dotenv()
 
 # Đọc các biến cấu hình từ môi trường
-SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-# SUPABASE_KEY ở đây là SERVICE_ROLE_KEY - có quyền bypass RLS để insert data
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-SERVER_TOKEN = os.getenv("SERVER_TOKEN", "")
+API_URL = os.getenv("API_URL", "").rstrip("/")
+TOKEN = os.getenv("TOKEN", "")
 
 # Kiểm tra xem cấu hình đã đầy đủ chưa, nếu thiếu thì dừng lại
-if not SUPABASE_URL or not SUPABASE_KEY or not SERVER_TOKEN:
-    print("❌ LỖI: Thiếu cấu hình! Vui lòng chạy ./setup.sh hoặc tạo file .env thủ công.")
-    print("   File .env cần có 3 dòng:")
-    print("   SUPABASE_URL=https://your-project.supabase.co")
-    print("   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key")
-    print("   SERVER_TOKEN=uuid-token-của-server")
+if not API_URL or not TOKEN:
+    print("❌ LỖI: Thiếu cấu hình! Vui lòng chạy setup script hoặc tạo file .env thủ công.")
+    print("   File .env cần có 2 dòng:")
+    print("   API_URL=https://your-dashboard.com")
+    print("   TOKEN=uuid-token-của-server")
+    print("")
+    print("   Hoặc chạy lệnh sau để cài đặt tự động:")
+    print("   curl -fsSL https://your-dashboard.com/api/setup | bash")
     exit(1)
 
 # ============================================================
-# CẤU HÌNH HTTP HEADERS CHO SUPABASE REST API
+# CẤU HÌNH HTTP HEADERS CHO DASHBOARD API
 # ============================================================
 HEADERS = {
-    "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json",
-    # "return=minimal" để Supabase không trả về data sau khi insert (tiết kiệm bandwidth)
-    "Prefer": "return=minimal",
 }
 
 
 def register_server() -> str:
     """
-    Tự động tạo hoặc cập nhật record server trong Supabase khi agent khởi động.
-    Dùng SERVER_TOKEN làm khóa duy nhất để xác định server.
+    Đăng ký server với Dashboard API khi agent khởi động.
+    Dùng TOKEN (trong Authorization header) làm khóa nhận diện.
 
     Returns:
         server_id (UUID string) để dùng cho metrics và logs.
@@ -64,51 +62,27 @@ def register_server() -> str:
     Raises:
         Exception nếu không thể đăng ký server.
     """
-    url = f"{SUPABASE_URL}/rest/v1/servers"
+    url = f"{API_URL}/api/register"
     hostname = socket.gethostname()
-    headers_with_return = {**HEADERS, "Prefer": "return=representation"}
-
-    # Thử tìm server đã tồn tại với token này
     try:
-        response = requests.get(
-            f"{url}?token=eq.{SERVER_TOKEN}",
-            headers=headers_with_return,
+        response = requests.post(
+            url,
+            headers=HEADERS,
+            json={"hostname": hostname},
             timeout=10,
         )
         response.raise_for_status()
+        return response.json()["id"]
     except requests.exceptions.RequestException as e:
-        raise Exception(f"Không thể tra cứu server theo token: {e}") from e
-    existing = response.json()
-
-    if existing:
-        # Server đã tồn tại → cập nhật hostname (tên máy)
-        server_id = existing[0]["id"]
-        requests.patch(
-            f"{url}?id=eq.{server_id}",
-            headers=headers_with_return,
-            json={"name": hostname},
-            timeout=10,
-        )
-        return server_id
-    else:
-        # Server chưa tồn tại → tạo mới
-        create_response = requests.post(
-            url,
-            headers=headers_with_return,
-            json={"token": SERVER_TOKEN, "name": hostname},
-            timeout=10,
-        )
-        if create_response.status_code == 201:
-            return create_response.json()[0]["id"]
-        raise Exception(f"Không thể tạo server record: HTTP {create_response.status_code}")
+        raise Exception(f"Không thể đăng ký server: {e}") from e
 
 
 def send_metric(server_id: str, cpu: float, memory: float, disk: float) -> bool:
     """
-    Gửi dữ liệu metrics (CPU, RAM, Disk) lên bảng 'metrics' trong Supabase.
+    Gửi dữ liệu metrics (CPU, RAM, Disk) lên Dashboard API.
 
     Args:
-        server_id: UUID của server trong database
+        server_id: UUID của server
         cpu: Phần trăm sử dụng CPU (0-100)
         memory: Phần trăm sử dụng RAM (0-100)
         disk: Phần trăm sử dụng Disk (0-100)
@@ -116,17 +90,15 @@ def send_metric(server_id: str, cpu: float, memory: float, disk: float) -> bool:
     Returns:
         True nếu gửi thành công, False nếu có lỗi
     """
-    url = f"{SUPABASE_URL}/rest/v1/metrics"
+    url = f"{API_URL}/api/metrics"
     data = {
         "server_id": server_id,
         "cpu": cpu,
         "memory": memory,
         "disk": disk,
-        "status": "online",
     }
     try:
         response = requests.post(url, headers=HEADERS, json=data, timeout=10)
-        # Supabase trả về 201 Created khi insert thành công
         return response.status_code == 201
     except requests.exceptions.RequestException as e:
         print(f"❌ Lỗi kết nối khi gửi metric: {e}")
@@ -135,16 +107,16 @@ def send_metric(server_id: str, cpu: float, memory: float, disk: float) -> bool:
 
 def send_log(server_id: str, message: str) -> bool:
     """
-    Gửi một dòng log cảnh báo lên bảng 'logs' trong Supabase.
+    Gửi một dòng log cảnh báo lên Dashboard API.
 
     Args:
-        server_id: UUID của server trong database
+        server_id: UUID của server
         message: Nội dung log cần gửi
 
     Returns:
         True nếu gửi thành công, False nếu có lỗi
     """
-    url = f"{SUPABASE_URL}/rest/v1/logs"
+    url = f"{API_URL}/api/logs"
     # Thêm timestamp vào đầu mỗi dòng log để dễ theo dõi
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     data = {
@@ -160,11 +132,11 @@ def send_log(server_id: str, message: str) -> bool:
 
 
 # ============================================================
-# ĐĂNG KÝ SERVER VỚI SUPABASE (TẠO HOẶC CẬP NHẬT RECORD)
+# ĐĂNG KÝ SERVER VỚI DASHBOARD API
 # ============================================================
 print("=" * 50)
 print("🚀 DevOps Agent đang khởi động...")
-print(f"   Supabase  : {SUPABASE_URL}")
+print(f"   Dashboard : {API_URL}")
 print("=" * 50)
 
 try:
@@ -179,7 +151,7 @@ except Exception as e:
 print("")
 print("=" * 50)
 print("🎉 Agent đã chạy! MÃ TOKEN CỦA BẠN LÀ:")
-print(f"   👉  {SERVER_TOKEN}")
+print(f"   👉  {TOKEN}")
 print("")
 print("   Dùng mã này trong Dashboard để nhận quyền")
 print("   quản lý server này.")
@@ -206,7 +178,7 @@ while True:
         # Disk: disk_usage('/') đo dung lượng ổ đĩa gốc
         disk = psutil.disk_usage("/")
 
-        # --- Gửi dữ liệu lên Supabase ---
+        # --- Gửi dữ liệu lên Dashboard API ---
         success = send_metric(SERVER_ID, cpu_percent, mem.percent, disk.percent)
 
         if success:
@@ -219,8 +191,8 @@ while True:
         else:
             print(f"⚠️  [{datetime.now().strftime('%H:%M:%S')}] Gửi dữ liệu thất bại, thử lại sau...")
 
-        # --- Kiểm tra CPU Spike (Bonus Alert) ---
-        # Nếu CPU vượt ngưỡng 80%, gửi log cảnh báo lên Supabase
+        # --- Kiểm tra CPU Spike ---
+        # Nếu CPU vượt ngưỡng 80%, gửi log cảnh báo
         if cpu_percent > 80:
             warning_msg = f"⚠️ CẢNH BÁO: CPU đang quá tải! ({cpu_percent:.1f}%)"
             print(f"🔔 {warning_msg}")
