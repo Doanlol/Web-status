@@ -109,10 +109,14 @@ export default function AddServerModal({ onClose, onSuccess }: AddServerModalPro
         );
       }
 
-      await supabase
+      const { error: updateError } = await supabase
         .from("servers")
         .update({ name: serverName.trim() || "My Server" })
         .eq("token", token.trim());
+
+      if (updateError) {
+        throw new Error(`Không thể cập nhật tên server: ${updateError.message}`);
+      }
 
       setSuccess(true);
       setTimeout(onSuccess, SUCCESS_DISPLAY_DURATION_MS);
