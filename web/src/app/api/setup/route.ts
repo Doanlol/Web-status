@@ -85,7 +85,7 @@ echo ""
 # BƯỚC 4: Cài đặt thư viện Python cần thiết
 # ============================================================
 echo -e "\${CYAN}📦 Đang cài đặt thư viện Python...\${NC}"
-pip install psutil requests python-dotenv
+pip3 install psutil requests python-dotenv --break-system-packages || pip install psutil requests python-dotenv
 echo -e "\${GREEN}✅ Đã cài đặt xong thư viện!\${NC}"
 echo ""
 
